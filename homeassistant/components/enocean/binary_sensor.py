@@ -71,52 +71,65 @@ class EnOceanBinarySensor(EnOceanEntity, BinarySensorEntity):
         return self._device_class
 
     def value_changed(self, packet):
-        """Fire an event with the data that have changed.
 
-        This method is called when there is an incoming packet associated
-        with this platform.
+        if packet.data[0] == 0xD5:
+            packet.parse_eep(0x00, 0x01)
+            contact_value = packet.parsed['CO']['value']
 
-        Example packet data:
-        - 2nd button pressed
-            ['0xf6', '0x10', '0x00', '0x2d', '0xcf', '0x45', '0x30']
-        - button released
-            ['0xf6', '0x00', '0x00', '0x2d', '0xcf', '0x45', '0x20']
-        """
-        # Energy Bow
-        pushed = None
+            if contact_value == 'open':
+                self._state = 'on'
+            elif contact_value == 'closed':
+                self._state = 'off'
 
-        if packet.data[6] == 0x30:
-            pushed = 1
-        elif packet.data[6] == 0x20:
-            pushed = 0
+            self.schedule_update_ha_state()
 
-        self.schedule_update_ha_state()
+        if packet.data[0] == 0xF6:
+            """Fire an event with the data that have changed.
 
-        action = packet.data[1]
-        if action == 0x70:
-            self.which = 0
-            self.onoff = 0
-        elif action == 0x50:
-            self.which = 0
-            self.onoff = 1
-        elif action == 0x30:
-            self.which = 1
-            self.onoff = 0
-        elif action == 0x10:
-            self.which = 1
-            self.onoff = 1
-        elif action == 0x37:
-            self.which = 10
-            self.onoff = 0
-        elif action == 0x15:
-            self.which = 10
-            self.onoff = 1
-        self.hass.bus.fire(
-            EVENT_BUTTON_PRESSED,
-            {
-                "id": self.dev_id,
-                "pushed": pushed,
-                "which": self.which,
-                "onoff": self.onoff,
-            },
-        )
+            This method is called when there is an incoming packet associated
+            with this platform.
+
+            Example packet data:
+            - 2nd button pressed
+                ['0xf6', '0x10', '0x00', '0x2d', '0xcf', '0x45', '0x30']
+            - button released
+                ['0xf6', '0x00', '0x00', '0x2d', '0xcf', '0x45', '0x20']
+            """
+            # Energy Bow
+            pushed = None
+
+            if packet.data[6] == 0x30:
+                pushed = 1
+            elif packet.data[6] == 0x20:
+                pushed = 0
+
+            self.schedule_update_ha_state()
+
+            action = packet.data[1]
+            if action == 0x70:
+                self.which = 0
+                self.onoff = 0
+            elif action == 0x50:
+                self.which = 0
+                self.onoff = 1
+            elif action == 0x30:
+                self.which = 1
+                self.onoff = 0
+            elif action == 0x10:
+                self.which = 1
+                self.onoff = 1
+            elif action == 0x37:
+                self.which = 10
+                self.onoff = 0
+            elif action == 0x15:
+                self.which = 10
+                self.onoff = 1
+            self.hass.bus.fire(
+                EVENT_BUTTON_PRESSED,
+                {
+                    "id": self.dev_id,
+                    "pushed": pushed,
+                    "which": self.which,
+                    "onoff": self.onoff,
+                },
+            )
